@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # MongoDB Service
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - backend-network
+    restart: unless-stopped
+    # No ports exposed to host - only accessible within backend network
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: todo-backend
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/TODO
+      - PORT=5000
+    networks:
+      - backend-network
+      - frontend-network
+    restart: unless-stopped
+    # No ports exposed to host - only accessible within networks
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: todo-frontend
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://todo-backend:5000
+    ports:
+      - "80:80"
+    networks:
+      - frontend-network
+    restart: unless-stopped
+
+# Define named volumes
+volumes:
+  mongodb-data:
+    name: mongodb-data
+
+# Define custom bridge networks
+networks:
+  backend-network:
+    driver: bridge
+    # Private network for database and backend
+  frontend-network:
+    driver: bridge
+    # Network for frontend and backend communication
